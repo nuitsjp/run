@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory)]
     [string]$PublicKey,
 
+    [string]$GitBashPath = 'C:\Program Files\Git\bin\bash.exe',
+
     [switch]$KeepPasswordAuthentication
 )
 
@@ -116,7 +118,14 @@ if (-not $keyText) {
     throw '公開鍵を入力してください。'
 }
 
+if (-not (Test-Path -LiteralPath $GitBashPath -PathType Leaf)) {
+    throw "Git Bash が見つかりません: $GitBashPath"
+}
+
 Install-OpenSshCapability -Name 'OpenSSH.Server~~~~0.0.1.0' -DisplayName 'OpenSSH Server'
+
+Set-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\OpenSSH' -Name 'DefaultShell' -Value $GitBashPath
+Set-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\OpenSSH' -Name 'DefaultShellCommandOption' -Value '-c'
 
 Set-Service -Name sshd -StartupType Automatic
 Start-Service -Name sshd
@@ -155,6 +164,7 @@ Write-Host "  User     : $env:USERNAME"
 Write-Host "  sshd     : $($service.Status) / Automatic"
 Write-Host '  Port     : 22'
 Write-Host '  Firewall : TCP/22 Allow'
+Write-Host "  Shell    : $GitBashPath"
 Write-Host "  Password : $(if ($KeepPasswordAuthentication) { '既存設定を維持' } else { 'Disabled' })"
 Write-Host ''
 Write-Host "接続例: ssh $env:USERNAME@$env:COMPUTERNAME"

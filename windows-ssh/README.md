@@ -42,8 +42,14 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyData nuits@CLIENT
 
 接続先の管理者 PowerShell で、引数なしで実行します。
 
+Git for Windows を全ユーザー向けにインストール済みで、Git Bash が `C:\Program Files\Git\bin\bash.exe` にあることを前提にします。このスクリプトは SSH の既定シェルを Git Bash に変更し、サーバー上の全ユーザーに適用します。インストール先が異なる場合は `-GitBashPath 'D:\Git\bin\bash.exe'` を指定してください。
+
 ```powershell
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/nuitsjp/run/main/windows-ssh/Enable-OpenSshServer.ps1)))
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nuitsjp/run/main/windows-ssh/Enable-OpenSshServer.ps1))) -GitBashPath 'D:\Git\bin\bash.exe'
 ```
 
 ```text
@@ -60,6 +66,7 @@ OpenSSH Server の設定が完了しました。
   sshd     : Running / Automatic
   Port     : 22
   Firewall : TCP/22 Allow
+  Shell    : C:\Program Files\Git\bin\bash.exe
   Password : Disabled
 
 接続例: ssh nuits@DEVPC
