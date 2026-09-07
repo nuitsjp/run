@@ -51,6 +51,7 @@ cmdlet  at command pipeline position 1
 Supply values for the following parameters:
 PublicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyData nuits@CLIENT
 OpenSSH Server をインストールします。
+ファイアウォールで TCP/22 を許可します。
 公開鍵を登録しました: C:\ProgramData\ssh\administrators_authorized_keys
 
 OpenSSH Server の設定が完了しました。
@@ -58,6 +59,7 @@ OpenSSH Server の設定が完了しました。
   User     : nuits
   sshd     : Running / Automatic
   Port     : 22
+  Firewall : TCP/22 Allow
   Password : Disabled
 
 接続例: ssh nuits@DEVPC

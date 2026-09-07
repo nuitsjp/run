@@ -44,6 +44,24 @@ function Install-OpenSshCapability {
     }
 }
 
+function Enable-SshInboundFirewall {
+    $PSNativeCommandUseErrorActionPreference = $false
+    $netsh = Join-Path $env:WINDIR 'System32\netsh.exe'
+    $name = 'OpenSSH SSH Server (sshd)'
+
+    Write-Host 'ファイアウォールで TCP/22 を許可します。'
+    $null = & $netsh advfirewall firewall show rule "name=$name" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        & $netsh advfirewall firewall set rule "name=$name" new enable=yes profile=any
+    }
+    else {
+        & $netsh advfirewall firewall add rule "name=$name" dir=in action=allow protocol=TCP localport=22 enable=yes profile=any
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw 'ファイアウォールの TCP/22 許可に失敗しました。'
+    }
+}
+
 function Set-SshdConfigValue {
     param(
         [Parameter(Mandatory)] [string]$Path,
@@ -103,20 +121,7 @@ Install-OpenSshCapability -Name 'OpenSSH.Server~~~~0.0.1.0' -DisplayName 'OpenSS
 Set-Service -Name sshd -StartupType Automatic
 Start-Service -Name sshd
 
-$firewallRuleName = 'OpenSSH-Server-In-TCP'
-if (-not (Get-NetFirewallRule -Name $firewallRuleName -ErrorAction SilentlyContinue)) {
-    New-NetFirewallRule `
-        -Name $firewallRuleName `
-        -DisplayName 'OpenSSH SSH Server (sshd)' `
-        -Enabled True `
-        -Direction Inbound `
-        -Protocol TCP `
-        -Action Allow `
-        -LocalPort 22 | Out-Null
-}
-else {
-    Enable-NetFirewallRule -Name $firewallRuleName
-}
+Enable-SshInboundFirewall
 
 Add-AdministratorAuthorizedKey -Key $keyText
 
@@ -149,6 +154,7 @@ Write-Host "  Computer : $env:COMPUTERNAME"
 Write-Host "  User     : $env:USERNAME"
 Write-Host "  sshd     : $($service.Status) / Automatic"
 Write-Host '  Port     : 22'
+Write-Host '  Firewall : TCP/22 Allow'
 Write-Host "  Password : $(if ($KeepPasswordAuthentication) { '既存設定を維持' } else { 'Disabled' })"
 Write-Host ''
 Write-Host "接続例: ssh $env:USERNAME@$env:COMPUTERNAME"
