@@ -17,6 +17,33 @@ function Assert-Administrator {
     }
 }
 
+function Install-OpenSshCapability {
+    param(
+        [Parameter(Mandatory)] [string]$Name,
+        [Parameter(Mandatory)] [string]$DisplayName
+    )
+
+    # PowerShell 7 の Get-WindowsCapability は COM エラーになるため DISM を使う
+    $dism = Join-Path $env:WINDIR 'System32\dism.exe'
+    $PSNativeCommandUseErrorActionPreference = $false
+
+    $info = & $dism /English /Online /Get-CapabilityInfo "/CapabilityName:$Name" 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        throw "$DisplayName capability が見つかりません。対応するWindowsで実行してください。"
+    }
+
+    if ($info -match '(?im)^\s*State\s*:\s*Installed\s*$') {
+        Write-Host "$DisplayName はインストール済みです。"
+        return
+    }
+
+    Write-Host "$DisplayName をインストールします。"
+    & $dism /English /Online /Add-Capability "/CapabilityName:$Name"
+    if ($LASTEXITCODE -ne 0) {
+        throw "$DisplayName のインストールに失敗しました。"
+    }
+}
+
 function Set-SshdConfigValue {
     param(
         [Parameter(Mandatory)] [string]$Path,
@@ -71,18 +98,7 @@ if (-not $keyText) {
     throw '公開鍵を入力してください。'
 }
 
-$capability = Get-WindowsCapability -Online | Where-Object Name -Like 'OpenSSH.Server*'
-if (-not $capability) {
-    throw 'OpenSSH.Server capability が見つかりません。対応するWindowsで実行してください。'
-}
-
-if ($capability.State -ne 'Installed') {
-    Write-Host 'OpenSSH Server をインストールします。'
-    Add-WindowsCapability -Online -Name $capability.Name | Out-Null
-}
-else {
-    Write-Host 'OpenSSH Server はインストール済みです。'
-}
+Install-OpenSshCapability -Name 'OpenSSH.Server~~~~0.0.1.0' -DisplayName 'OpenSSH Server'
 
 Set-Service -Name sshd -StartupType Automatic
 Start-Service -Name sshd

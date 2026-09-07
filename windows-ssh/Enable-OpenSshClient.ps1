@@ -22,6 +22,33 @@ function Assert-Administrator {
     }
 }
 
+function Install-OpenSshCapability {
+    param(
+        [Parameter(Mandatory)] [string]$Name,
+        [Parameter(Mandatory)] [string]$DisplayName
+    )
+
+    # PowerShell 7 の Get-WindowsCapability は COM エラーになるため DISM を使う
+    $dism = Join-Path $env:WINDIR 'System32\dism.exe'
+    $PSNativeCommandUseErrorActionPreference = $false
+
+    $info = & $dism /English /Online /Get-CapabilityInfo "/CapabilityName:$Name" 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        throw "$DisplayName capability が見つかりません。対応するWindowsで実行してください。"
+    }
+
+    if ($info -match '(?im)^\s*State\s*:\s*Installed\s*$') {
+        Write-Host "$DisplayName はインストール済みです。"
+        return
+    }
+
+    Write-Host "$DisplayName をインストールします。"
+    & $dism /English /Online /Add-Capability "/CapabilityName:$Name"
+    if ($LASTEXITCODE -ne 0) {
+        throw "$DisplayName のインストールに失敗しました。"
+    }
+}
+
 function Assert-SshKeygen {
     if (Get-Command ssh-keygen -ErrorAction SilentlyContinue) {
         return
@@ -29,15 +56,7 @@ function Assert-SshKeygen {
 
     Write-Host 'OpenSSH Client が見つからないため、インストールします。'
     Assert-Administrator
-
-    $capability = Get-WindowsCapability -Online | Where-Object Name -Like 'OpenSSH.Client*'
-    if (-not $capability) {
-        throw 'OpenSSH.Client capability が見つかりません。対応するWindowsで実行してください。'
-    }
-
-    if ($capability.State -ne 'Installed') {
-        Add-WindowsCapability -Online -Name $capability.Name | Out-Null
-    }
+    Install-OpenSshCapability -Name 'OpenSSH.Client~~~~0.0.1.0' -DisplayName 'OpenSSH Client'
 
     if (-not (Get-Command ssh-keygen -ErrorAction SilentlyContinue)) {
         throw 'ssh-keygen が見つかりません。ターミナルを開き直してから再実行してください。'
